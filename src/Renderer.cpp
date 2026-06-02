@@ -2,10 +2,11 @@
 
 #include <glm/glm.hpp>
 
-#include <cmath>
-#include <iostream>
-#include <execution>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <execution>
+#include <iostream>
 
 namespace rtx {
 

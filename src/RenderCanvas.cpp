@@ -1,6 +1,6 @@
 #include "RenderCanvas.h"
 
-#include <stb/stb_image_write.h>
+#include <stb_image_write.h>
 
 namespace rtx {
 
