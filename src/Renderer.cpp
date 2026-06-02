@@ -10,11 +10,11 @@
 namespace rtx {
 
 void Renderer::render(const Scene& scene, const Camera& camera,
-                      RenderCanvas* canvas) {
+                      ImageBuffer* canvas) {
     this->current_camera = &camera;
     this->current_scene = &scene;
-    this->width = canvas->getWidth() /* * 2*/;
-    this->height = canvas->getHeight() /* * 2*/;
+    this->width = canvas->GetWidth() /* * 2*/;
+    this->height = canvas->GetHeight() /* * 2*/;
 
     std::for_each(std::execution::par, vertitcal_iter.begin(),
                   vertitcal_iter.end(), [this, canvas](int y) {
@@ -26,7 +26,7 @@ void Renderer::render(const Scene& scene, const Camera& camera,
                           accum /= accumulated_samples;
                           accum = glm::clamp(accum, 0.0f, 1.0f);
 
-                          canvas->setPixel(
+                          canvas->SetPixel(
                               x, y,
                               calculateColorFromRGBF(accum.r, accum.g, accum.b));
                       }

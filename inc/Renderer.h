@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Camera.h"
+#include "ImageBuffer.hpp"
 #include "Ray.h"
-#include "RenderCanvas.h"
 #include "Scene.h"
 
 namespace rtx {
 
 class Renderer {
    public:
-    void render(const Scene& scene, const Camera& camera, RenderCanvas* canvas);
+    void render(const Scene& scene, const Camera& camera, ImageBuffer* canvas);
 
     void resetSamples(int width, int height);
 

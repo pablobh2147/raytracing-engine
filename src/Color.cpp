@@ -1,4 +1,4 @@
-#include "color.h"
+#include "Color.hpp"
 
 int_color calculateColorFromRGB(float r, float g, float b) {
     int red = int(r * 255.0f);

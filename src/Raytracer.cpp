@@ -3,7 +3,7 @@
 #include <string>
 
 #include "Camera.h"
-#include "RenderCanvas.h"
+#include "ImageBuffer.hpp"
 #include "Renderer.h"
 
 std::chrono::milliseconds start_time;
@@ -23,7 +23,7 @@ int main() {
     constexpr int width = 512;
     constexpr int height = 512;
 
-    rtx::RenderCanvas* canvas = new rtx::RenderCanvas(width, height);
+    rtx::ImageBuffer canvas = rtx::ImageBuffer(width, height);
     rtx::Renderer renderer;
     Camera camera(45.0f, 0.01f, 100.0f);
     camera.setPosition(glm::vec3(15, 10, 15));
@@ -69,26 +69,26 @@ int main() {
             renderer.resetSamples(width, height);
             for (int s = 1; s <= samples; s++) {
                 startTimer();
-                renderer.render(scene, camera, canvas);
+                renderer.render(scene, camera, &canvas);
                 stopTimer();
             }
 
-            std::string filename = std::string("frames/image-") + std::to_string(i) + std::string(".png");
-            rtx::writeImageToDisk(canvas, filename.c_str());
+            std::string filename = std::string("output/image-") + std::to_string(i) + std::string(".png");
+            rtx::WriteImageToDisk(canvas, filename.c_str());
             std::cout << "Rendered frame " << i << " of " << total_frames << std::endl;
         }
     } else {
         renderer.resetSamples(width, height);
         for (int i = 1; i <= samples; i++) {
             startTimer();
-            renderer.render(scene, camera, canvas);
+            renderer.render(scene, camera, &canvas);
             stopTimer();
 
             int progress = static_cast<int>((static_cast<float>(i) / samples) * 100);
             std::cout << "\rProgress: " << progress << "%" << std::flush;
         }
         std::cout << std::endl;
-        rtx::writeImageToDisk(canvas, "output/image.png");
+        rtx::WriteImageToDisk(canvas, "output/image.png");
     }
 
     return 0;
