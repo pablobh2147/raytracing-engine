@@ -43,10 +43,9 @@ The renderer currently runs entirely on the CPU with aggressive compiler optimiz
 git clone --recursive https://github.com/pablobh2147/raytracing-engine
 
 # Build
-mkdir build && cd build
-cmake ..
-make
+cmake -B build
+cmake --build build
 
 # Run
-./raytracer
+./build/raytracer
 ```
