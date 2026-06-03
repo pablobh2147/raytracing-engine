@@ -102,7 +102,7 @@ Color Renderer::ProcessFragment(uint32_t x, uint32_t y, const RenderOptions& opt
 
         const Material& material = current_scene->GetMaterial(result.body->material_idx);
 
-        light += material.emmision() * contribution;
+        light += material.emission() * contribution;
 
         glm::vec3 specular_dir = glm::reflect(ray.direction, result.normal);
         glm::vec3 diffuse_dir = glm::normalize(result.normal + RandomUnitSphere(seed));
