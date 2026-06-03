@@ -49,8 +49,8 @@ void ConfigureScene(Scene& scene) noexcept {
 
     Material pink_material;
     pink_material.albedo = glm::vec3(1.0f, 0.4f, 0.7f);
-    pink_material.roughness = 0.6f;
-    pink_material.metallic = 0.0f;
+    pink_material.roughness = 0.9f;
+    pink_material.metallic = 0.1f;
 
     Material white_material;
     white_material.albedo = glm::vec3(0.9f, 0.9f, 0.9f);
@@ -105,23 +105,27 @@ int main() {
     bool render_animation = false;
 
     RenderOptions options = {
-        .samples = 2048,
+        .samples = 64,
         .max_bounces = 5,
     };
 
-    if (render_animation) {
-        constexpr uint32_t TOTAL_FRAMES = 24;
-        constexpr glm::vec3 MOVE_STEP = glm::vec3(0.25F, 0, 0.25F);
+    std::cin >> options.samples >> render_animation;
 
-        for (uint32_t i = 1; i <= TOTAL_FRAMES; i++) {
-            std::cout << "Rendering frame " << i << " of " << TOTAL_FRAMES << std::endl;
+    if (render_animation) {
+        constexpr glm::vec3 MOVE_STEP = glm::vec3(-0.25F, 0, -0.25F);
+
+        uint32_t frames;
+        std::cin >> frames;
+
+        for (uint32_t i = 1; i <= frames; i++) {
+            std::cout << "Rendering frame " << i << " of " << frames << std::endl;
             camera.Move(MOVE_STEP);
 
             renderer.RenderFrame(scene, camera, buffer, options);
 
-            std::string filename = std::format("output/image-{}.png", i);
+            std::string filename = std::format("output/frames/frame-{}.png", i);
             WriteImageToDisk(buffer, filename.c_str());
-            std::cout << "Rendered frame " << i << " of " << TOTAL_FRAMES << std::endl;
+            std::cout << "Rendered frame " << i << " of " << frames << std::endl;
         }
     } else {
         renderer.RenderFrame(scene, camera, buffer, options);
