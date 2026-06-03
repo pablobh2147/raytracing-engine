@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <execution>
 #include <iostream>
 
@@ -12,7 +11,7 @@ namespace rtx {
 
 void Renderer::RenderFrame(const Scene& scene, const Camera& camera, ImageBuffer& buffer, const RenderOptions& options) {
     ResetSamples(buffer.GetWidth(), buffer.GetHeight());
-    for (uint32_t i = 0; i < options.samples; i++) {
+    for (uint32_t i = 1; i <= options.samples; i++) {
         std::cout << "Sample " << i << " of " << options.samples << std::endl;
         RenderSample(scene, camera, buffer, options);
     }
@@ -24,18 +23,21 @@ void Renderer::RenderSample(const Scene& scene, const Camera& camera, ImageBuffe
     this->width = buffer.GetWidth();
     this->height = buffer.GetHeight();
 
-    std::for_each(std::execution::par, vertical_iter.begin(),
-                  vertical_iter.end(), [this, &buffer, &options](uint32_t y) {
-                      for (uint32_t x = 0; x < width; x++) {
-                          Color color = ProcessFragment(x, y, options);
-                          accumulated_colors[x + y * width] += color;
+    const uint32_t total_pixels = width * height;
+    std::for_each(std::execution::par, pixel_iter.begin(),
+                  pixel_iter.end(), [this, &buffer, &options](uint32_t pixel_idx) {
+                      uint32_t x = pixel_idx % width;
+                      uint32_t y = pixel_idx / width;
 
-                          Color accum = accumulated_colors[x + y * width];
-                          accum /= accumulated_samples;
-                          accum = glm::clamp(accum, 0.0f, 1.0f);
+                      Color color = ProcessFragment(x, y, options);
+                      accumulated_colors[pixel_idx] += color;
 
-                          buffer.SetPixel(x, y, calculateColorFromRGBF(accum.r, accum.g, accum.b));
-                      }
+                      Color accum = accumulated_colors[pixel_idx];
+                      accum /= accumulated_samples;
+                      accum = glm::clamp(accum, 0.0F, 1.0F);
+                      glm::vec3 rgb = glm::pow(glm::vec3(accum), glm::vec3(1.0F / 2.2F));
+
+                      buffer.SetPixel(x, y, calculateColorFromRGBF(rgb.r, rgb.g, rgb.b));
                   });
 
     accumulated_samples++;
@@ -44,16 +46,12 @@ void Renderer::RenderSample(const Scene& scene, const Camera& camera, ImageBuffe
 void Renderer::ResetSamples(uint32_t width, uint32_t height) {
     accumulated_samples = 1;
 
-    if (this->width != width || this->height != height) {
-        delete[] accumulated_colors;
-        accumulated_colors = new Color[width * height];
-    }
+    const uint32_t total_pixels = width * height;
+    accumulated_colors.assign(total_pixels, Color(0.0F));
 
-    std::memset(accumulated_colors, 0x00, width * height * sizeof(Color));
-
-    vertical_iter.resize(height);
-    for (uint32_t i = 0; i < height; i++) {
-        vertical_iter[i] = i;
+    pixel_iter.resize(total_pixels);
+    for (uint32_t i = 0; i < total_pixels; i++) {
+        pixel_iter[i] = i;
     }
 }
 
@@ -63,17 +61,20 @@ static uint32_t PCG_Hash(uint32_t input) {
     return (word >> 22u) ^ word;
 }
 
-float randomFloat(uint32_t& seed) {
+float RandomFloat(uint32_t& seed) {
     seed = PCG_Hash(seed);
     return float(seed) / float(UINT32_MAX);
 }
 
-glm::vec3 randomUnitSphere(uint32_t& seed) {
-    return glm::normalize(
-        glm::vec3(
-            randomFloat(seed) * 2.0f - 1.0f,
-            randomFloat(seed) * 2.0f - 1.0f,
-            randomFloat(seed) * 2.0f - 1.0f));
+glm::vec3 RandomUnitSphere(uint32_t& seed) {
+    glm::vec3 v;
+    do {
+        v = glm::vec3(
+            RandomFloat(seed) * 2.0F - 1.0F,
+            RandomFloat(seed) * 2.0F - 1.0F,
+            RandomFloat(seed) * 2.0F - 1.0F);
+    } while (glm::dot(v, v) > 1.0F || glm::dot(v, v) < 1e-6F);
+    return glm::normalize(v);
 }
 
 Color Renderer::ProcessFragment(uint32_t x, uint32_t y, const RenderOptions& options) {
@@ -95,40 +96,52 @@ Color Renderer::ProcessFragment(uint32_t x, uint32_t y, const RenderOptions& opt
 
         RaycastResult result = TraceRay(ray);
         if (!result.hit) {
-            light += current_scene->background_color * contribution;
+            light += current_scene->GetBackgroundColor() * contribution;
             break;
         }
 
-        const Material& material =
-            current_scene->materials[result.body->material_idx];
+        const Material& material = current_scene->GetMaterial(result.body->material_idx);
 
-        contribution *= material.albedo;
-        light += material.getEmmision();
+        light += material.emmision() * contribution;
+
+        glm::vec3 specular_dir = glm::reflect(ray.direction, result.normal);
+        glm::vec3 diffuse_dir = glm::normalize(result.normal + RandomUnitSphere(seed));
+        float roughness2 = material.roughness * material.roughness;
 
         ray.origin = result.hitpoint + result.normal * 0.0001F;
-        ray.direction = glm::normalize(result.normal + randomUnitSphere(seed));
+        ray.direction = glm::normalize(glm::mix(specular_dir, diffuse_dir, roughness2));
+
+        glm::vec3 specular_tint = glm::mix(glm::vec3(1.0F), material.albedo, material.metallic);
+        contribution *= glm::mix(specular_tint, material.albedo, roughness2);
+
+        if (i >= 3) {
+            float p = glm::max(contribution.r, glm::max(contribution.g, contribution.b));
+            if (RandomFloat(seed) > p) {
+                break;
+            }
+            contribution /= p;
+        }
     }
 
-    return glm::vec4(light, 1.0f);
+    return glm::vec4(light, 1.0F);
 }
 
 RaycastResult Renderer::TraceRay(const Raycast& ray) {
     const Sphere* closest_sphere = nullptr;
     float closest_t = std::numeric_limits<float>::max();
-    for (const Sphere& sphere : current_scene->spheres) {
+    for (const Sphere& sphere : current_scene->GetSpheres()) {
         glm::vec3 origin = ray.origin - sphere.position;
 
-        float a = glm::dot(ray.direction, ray.direction);
-        float b = 2.0f * glm::dot(origin, ray.direction);
+        float half_b = glm::dot(origin, ray.direction);
         float c = glm::dot(origin, origin) - sphere.radius * sphere.radius;
 
-        float discriminant = b * b - 4.0f * a * c;
-        if (discriminant < 0.0f) {
+        float discriminant = half_b * half_b - c;
+        if (discriminant < 0.0F) {
             continue;
         }
 
-        float t0 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
-        if (t0 > 0.0f && t0 < closest_t) {
+        float t0 = -half_b - glm::sqrt(discriminant);
+        if (t0 > 0.0F && t0 < closest_t) {
             closest_t = t0;
             closest_sphere = &sphere;
         }

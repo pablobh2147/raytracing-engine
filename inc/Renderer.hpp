@@ -32,9 +32,9 @@ class Renderer {
     uint32_t width;
     uint32_t height;
 
-    Color* accumulated_colors = nullptr;
+    std::vector<Color> accumulated_colors;
     uint32_t accumulated_samples = 1;
 
-    std::vector<uint32_t> vertical_iter;
+    std::vector<uint32_t> pixel_iter;
 };
 }  // namespace rtx

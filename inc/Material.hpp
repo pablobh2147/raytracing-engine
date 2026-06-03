@@ -12,7 +12,7 @@ struct Material {
     glm::vec3 emissive = glm::vec3(0.0f);
     float emissive_strength = 1.0f;
 
-    glm::vec3 getEmmision() const {
+    glm::vec3 emmision() const {
         return emissive * emissive_strength;
     }
 };
