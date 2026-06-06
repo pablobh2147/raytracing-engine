@@ -1,6 +1,8 @@
-# Raytracing Engine
+# Hoshizora (星空) — Physically Based Renderer
 
-A raytracing renderer with physically-based materials, built as a personal learning project.
+A from-scratch, physically-based rendering engine built in C++ as a personal learning project. 
+
+> **Hoshizora (星空):** It means *Starry Sky* in Japanese. A physical metaphor for a blank canvas catching millions of simulated rays, tracing the path of light through a synthetic universe.
 
 ## Examples
 
