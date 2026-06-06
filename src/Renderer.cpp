@@ -1,11 +1,11 @@
 #include "Renderer.hpp"
 
-#include <glm/glm.hpp>
-
 #include <algorithm>
 #include <cmath>
 #include <execution>
 #include <iostream>
+
+#include "math/Vector.hpp"
 
 namespace hzr {
 
@@ -35,7 +35,7 @@ void Renderer::RenderSample(const Scene& scene, const Camera& camera, ImageBuffe
                       Color accum = accumulated_colors[pixel_idx];
                       accum /= accumulated_samples;
                       accum = glm::clamp(accum, 0.0F, 1.0F);
-                      glm::vec3 rgb = glm::pow(glm::vec3(accum), glm::vec3(1.0F / 2.2F));
+                      Vector3f rgb = glm::pow(Vector3f(accum), Vector3f(1.0F / 2.2F));
 
                       buffer.SetPixel(x, y, calculateColorFromRGBF(rgb.r, rgb.g, rgb.b));
                   });
@@ -66,10 +66,10 @@ float RandomFloat(uint32_t& seed) {
     return float(seed) / float(UINT32_MAX);
 }
 
-glm::vec3 RandomUnitSphere(uint32_t& seed) {
-    glm::vec3 v;
+Vector3f RandomUnitSphere(uint32_t& seed) {
+    Vector3f v;
     do {
-        v = glm::vec3(
+        v = Vector3f(
             RandomFloat(seed) * 2.0F - 1.0F,
             RandomFloat(seed) * 2.0F - 1.0F,
             RandomFloat(seed) * 2.0F - 1.0F);
@@ -83,8 +83,8 @@ Color Renderer::ProcessFragment(uint32_t x, uint32_t y, const RenderOptions& opt
         .direction = current_camera->GetRayDirection(x, y),
     };
 
-    glm::vec3 light(0.0F);
-    glm::vec3 contribution(1.0F);
+    Vector3f light(0.0F);
+    Vector3f contribution(1.0F);
 
     uint32_t seed = x + y * width;
     seed *= accumulated_samples;
@@ -104,14 +104,14 @@ Color Renderer::ProcessFragment(uint32_t x, uint32_t y, const RenderOptions& opt
 
         light += material.emission() * contribution;
 
-        glm::vec3 specular_dir = glm::reflect(ray.direction, result.normal);
-        glm::vec3 diffuse_dir = glm::normalize(result.normal + RandomUnitSphere(seed));
+        Vector3f specular_dir = glm::reflect(ray.direction, result.normal);
+        Vector3f diffuse_dir = glm::normalize(result.normal + RandomUnitSphere(seed));
         float roughness2 = material.roughness * material.roughness;
 
         ray.origin = result.hitpoint + result.normal * 0.0001F;
         ray.direction = glm::normalize(glm::mix(specular_dir, diffuse_dir, roughness2));
 
-        glm::vec3 specular_tint = glm::mix(glm::vec3(1.0F), material.albedo, material.metallic);
+        Vector3f specular_tint = glm::mix(Vector3f(1.0F), material.albedo, material.metallic);
         contribution *= glm::mix(specular_tint, material.albedo, roughness2);
 
         if (i >= 3) {
@@ -130,7 +130,7 @@ RaycastResult Renderer::TraceRay(const Raycast& ray) {
     const Sphere* closest_sphere = nullptr;
     float closest_t = std::numeric_limits<float>::max();
     for (const Sphere& sphere : current_scene->GetSpheres()) {
-        glm::vec3 origin = ray.origin - sphere.position;
+        Vector3f origin = ray.origin - sphere.position;
 
         float half_b = glm::dot(origin, ray.direction);
         float c = glm::dot(origin, origin) - sphere.radius * sphere.radius;
@@ -159,7 +159,7 @@ RaycastResult Renderer::ClosestHit(const Raycast& ray, float hit_distance, const
     result.hit = true;
     result.body = sphere;
 
-    glm::vec3 origin = ray.origin - sphere->position;
+    Vector3f origin = ray.origin - sphere->position;
     result.hitpoint = origin + ray.direction * hit_distance;
     result.normal = glm::normalize(result.hitpoint);
 

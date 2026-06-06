@@ -1,18 +1,18 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "math/Vector.hpp"
 
 namespace hzr {
 
 struct Material {
-    glm::vec3 albedo;
+    Vector3f albedo;
     float roughness = 1.0f;
     float metallic = 0.0f;
 
-    glm::vec3 emissive = glm::vec3(0.0f);
+    Vector3f emissive = Vector3f(0.0f);
     float emissive_strength = 1.0f;
 
-    glm::vec3 emission() const {
+    Vector3f emission() const {
         return emissive * emissive_strength;
     }
 };

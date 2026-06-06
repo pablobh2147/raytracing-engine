@@ -1,10 +1,10 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "math/Vector.hpp"
 
 namespace hzr {
 
-typedef glm::vec4 Color;
+typedef Vector4f Color;
 typedef unsigned int int_color;
 
 int_color calculateColorFromRGB(float r, float g, float b);

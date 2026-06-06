@@ -11,13 +11,13 @@ using MaterialHandle = size_t;
 
 class Scene {
    private:
-    glm::vec3 m_background_color = glm::vec3(0.0f, 0.0f, 0.0f);
+    Vector3f m_background_color = Vector3f(0.0f, 0.0f, 0.0f);
     std::vector<Sphere> m_spheres;
     std::vector<Material> m_materials;
 
    public:
-    const glm::vec3& GetBackgroundColor() const { return m_background_color; }
-    void SetBackgroundColor(const glm::vec3& color) { m_background_color = color; }
+    const Vector3f& GetBackgroundColor() const { return m_background_color; }
+    void SetBackgroundColor(const Vector3f& color) { m_background_color = color; }
 
     const std::vector<Sphere>& GetSpheres() const { return m_spheres; }
 

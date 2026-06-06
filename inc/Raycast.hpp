@@ -1,20 +1,20 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "math/Vector.hpp"
 
 namespace hzr {
 
 class Sphere;
 
 struct Raycast {
-    glm::vec3 origin;
-    glm::vec3 direction;
+    Vector3f origin;
+    Vector3f direction;
 };
 
 struct RaycastResult {
     bool hit = false;
-    glm::vec3 hitpoint = glm::vec3(0, 0, 0);
-    glm::vec3 normal = glm::vec3(0, 0, 0);
+    Vector3f hitpoint = Vector3f(0, 0, 0);
+    Vector3f normal = Vector3f(0, 0, 0);
     const Sphere* body = nullptr;
 };
 

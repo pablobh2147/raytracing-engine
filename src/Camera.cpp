@@ -12,7 +12,7 @@ void Camera::CalculateProjection() {
 }
 
 void Camera::CalculateView() {
-    m_view = glm::lookAt(m_position, m_position + m_direction, glm::vec3(0, 1, 0));
+    m_view = glm::lookAt(m_position, m_position + m_direction, Vector3f(0, 1, 0));
     m_inverse_view = glm::inverse(m_view);
 }
 
@@ -21,11 +21,11 @@ void Camera::CalculateRays() {
 
     for (int y = 0; y < m_viewport_height; y++) {
         for (int x = 0; x < m_viewport_width; x++) {
-            glm::vec2 coord = glm::vec2(float(x) / float(m_viewport_width), float(y) / float(m_viewport_height));
+            Vector2f coord = Vector2f(float(x) / float(m_viewport_width), float(y) / float(m_viewport_height));
             coord = coord * 2.0f - 1.0f;
 
-            glm::vec4 ray = m_inverse_projection * glm::vec4(coord.x, coord.y, 1.0f, 1.0f);
-            glm::vec3 ray_direction = glm::vec3(m_inverse_view * glm::vec4(glm::normalize(glm::vec3(ray) / ray.w), 0));
+            Vector4f ray = m_inverse_projection * Vector4f(coord.x, coord.y, 1.0f, 1.0f);
+            Vector3f ray_direction = Vector3f(m_inverse_view * Vector4f(glm::normalize(Vector3f(ray) / ray.w), 0));
             m_rays[x + y * m_viewport_width] = ray_direction;
         }
     }
@@ -40,7 +40,7 @@ void Camera::Resize(uint32_t width, uint32_t height) {
     CalculateRays();
 }
 
-glm::vec3 Camera::GetRayDirection(uint32_t x, uint32_t y) const {
+Vector3f Camera::GetRayDirection(uint32_t x, uint32_t y) const {
     return m_rays[x + y * m_viewport_width];
 }
 
