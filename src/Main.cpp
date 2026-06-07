@@ -33,6 +33,11 @@ void LoadSceneConfig(SceneConfig& config) {
     std::cin >> config.camera_target.x >> config.camera_target.y >> config.camera_target.z;
 }
 
+void LoadScene(Scene& scene) {
+    scene.AddTriangle(Triangle(Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), 2));
+    scene.AddTriangle(Triangle(Vector3f(1.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 1.0f, 0.0f), 2));
+}
+
 int main() {
     constexpr uint32_t COLOR_COMPONENTS = 4;
     constexpr uint32_t COMPUTE_GROUP_SIZE = 16;
@@ -52,6 +57,7 @@ int main() {
     }
 
     std::shared_ptr<Scene> scene = std::make_shared<Scene>();
+    LoadScene(*scene);
 
     Camera camera(config.camera_fov, 0.01F, 100.0F);
     camera.CalculateView(config.camera_pos, config.camera_target, Vector3f(0, 1, 0));

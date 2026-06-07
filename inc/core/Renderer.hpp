@@ -56,7 +56,7 @@ class Renderer {
     bool CreateMaterialBuffer(const Scene& scene) noexcept;
 
     bool CreateComputePipeline() noexcept;
-    bool CreateDescriptorSets() noexcept;
+    bool UpdateDescriptorSets() noexcept;
 
    private:
     // Scene

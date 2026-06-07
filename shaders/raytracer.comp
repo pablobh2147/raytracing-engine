@@ -21,6 +21,10 @@ layout(std430, binding = 0) buffer OutputBuffer {
     uint pixels[];
 } image_buffer;
 
+layout(std430, binding = 1) buffer TriangleBuffer {
+    Triangle triangles[];
+} triangle_buffer;
+
 // --------------- Scene Data ---------------
 
 const Material materials[] = Material[](
@@ -53,11 +57,6 @@ const Sphere spheres[] = Sphere[](
 
 const Plane planes[] = Plane[](
     Plane(vec3(0.0, 1.0, 0.0), -1.5, 8)  // ground plane
-);
-
-const Triangle triangles[] = Triangle[](
-    Triangle(vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), 4),
-    Triangle(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), 2)
 );
 
 const vec3 background_color = vec3(0.05, 0.05, 0.15);
@@ -154,9 +153,9 @@ RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
     vec3 normal = cross(edge1, edge2);
 
     // Backface culling (CCW winding order)
-    if (dot(normal, ray.direction) > 0) {
-        return result;
-    }
+    // if (dot(normal, ray.direction) > 0) {
+    //     return result;
+    // }
 
     vec3 h = cross(ray.direction, edge2);
     float det = dot(edge1, h);
@@ -216,8 +215,8 @@ RaycastResult TraceRay(Ray ray) {
         }
     }
 
-    for (int i = 0; i < triangles.length(); i++) {
-        RaycastResult triangle_result = RaycastTriangle(triangles[i], ray);
+    for (int i = 0; i < triangle_buffer.triangles.length(); i++) {
+        RaycastResult triangle_result = RaycastTriangle(triangle_buffer.triangles[i], ray);
         if (triangle_result.hit && (!result.hit || triangle_result.distance < result.distance)) {
             result = triangle_result;
         }
