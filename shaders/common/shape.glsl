@@ -7,5 +7,10 @@ struct Sphere {
     uint material_index;
 };
 
+struct Plane {
+    vec3 normal;
+    float distance;
+    uint material_index;
+};
 
 #endif // COMMON_SHAPE_H
