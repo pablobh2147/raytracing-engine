@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 # Generate compile_commands.json for IDE support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -42,10 +42,12 @@ file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_NAME ${SHADER} NAME)
     set(SHADER_OUTPUT ${SHADER_OUTPUT_DIR}/${SHADER_NAME}.spv)
+    set(SHADER_DEPFILE ${SHADER_OUTPUT_DIR}/${SHADER_NAME}.d)
     add_custom_command(
         OUTPUT ${SHADER_OUTPUT}
-        COMMAND ${GLSLC} ${SHADER} -o ${SHADER_OUTPUT} -I${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        COMMAND ${GLSLC} ${SHADER} -o ${SHADER_OUTPUT} -MD -MF ${SHADER_DEPFILE} -I${CMAKE_CURRENT_SOURCE_DIR}/shaders
         DEPENDS ${SHADER}
+        DEPFILE ${SHADER_DEPFILE}
         COMMENT "Compiling shader: ${SHADER_NAME}"
     )
     list(APPEND SHADER_OUTPUTS ${SHADER_OUTPUT})
