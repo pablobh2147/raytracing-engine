@@ -44,7 +44,7 @@ foreach(SHADER ${SHADER_SOURCES})
     set(SHADER_OUTPUT ${SHADER_OUTPUT_DIR}/${SHADER_NAME}.spv)
     add_custom_command(
         OUTPUT ${SHADER_OUTPUT}
-        COMMAND ${GLSLC} ${SHADER} -o ${SHADER_OUTPUT}
+        COMMAND ${GLSLC} ${SHADER} -o ${SHADER_OUTPUT} -I${CMAKE_CURRENT_SOURCE_DIR}/shaders
         DEPENDS ${SHADER}
         COMMENT "Compiling shader: ${SHADER_NAME}"
     )
