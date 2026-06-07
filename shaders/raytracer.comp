@@ -1,5 +1,10 @@
 #version 450
 
+#include "common/rng.glsl"
+#include "common/material.glsl"
+#include "common/shape.glsl"
+#include "common/ray.glsl"
+
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
@@ -14,47 +19,18 @@ layout(std430, binding = 0) buffer OutputBuffer {
     uint pixels[];
 } image_buffer;
 
-// --------------- Data Structures ---------------
-
-struct Material {
-    vec3 albedo;
-    float roughness;
-    vec3 emission;
-    float metallic;
-};
-
-struct Sphere {
-    vec3 position;
-    float radius;
-    uint material_index;
-};
-
-struct Ray {
-    vec3 origin;
-    vec3 direction;
-};
-
-struct RaycastResult {
-    bool hit;
-    vec3 position;
-    vec3 normal;
-    float distance;
-    uint material_index;
-};
-
-
 // --------------- Scene Data ---------------
 
 const Material materials[] = Material[](
-    Material(vec3(0.9, 0.1, 0.1), 0.2, vec3(0.0), 0.0),           // 0: red
-    Material(vec3(0.1, 0.8, 0.1), 0.5, vec3(0.0), 0.3),           // 1: green
-    Material(vec3(0.1, 0.3, 0.9), 0.05, vec3(0.0), 1.0),          // 2: blue metallic
-    Material(vec3(1.0, 0.5, 0.1), 0.3, vec3(0.0), 0.0),           // 3: orange
-    Material(vec3(0.7, 0.1, 0.8), 0.15, vec3(0.0), 0.6),          // 4: purple
-    Material(vec3(0.9, 0.9, 0.1), 0.4, vec3(0.0), 0.2),           // 5: yellow
-    Material(vec3(0.1, 0.8, 0.8), 0.1, vec3(0.0), 0.8),           // 6: cyan
-    Material(vec3(1.0, 0.4, 0.7), 0.9, vec3(0.0), 0.1),           // 7: pink
-    Material(vec3(0.9, 0.9, 0.9), 0.8, vec3(0.0), 0.0),           // 8: white
+    Material(vec3(0.9, 0.1, 0.1), 0.2, vec3(0.0), 0.0),                   // 0: red
+    Material(vec3(0.1, 0.8, 0.1), 0.5, vec3(0.0), 0.3),                   // 1: green
+    Material(vec3(0.1, 0.3, 0.9), 0.05, vec3(0.0), 1.0),                  // 2: blue metallic
+    Material(vec3(1.0, 0.5, 0.1), 0.3, vec3(0.0), 0.0),                   // 3: orange
+    Material(vec3(0.7, 0.1, 0.8), 0.15, vec3(0.0), 0.6),                  // 4: purple
+    Material(vec3(0.9, 0.9, 0.1), 0.4, vec3(0.0), 0.2),                   // 5: yellow
+    Material(vec3(0.1, 0.8, 0.8), 0.1, vec3(0.0), 0.8),                   // 6: cyan
+    Material(vec3(1.0, 0.4, 0.7), 0.9, vec3(0.0), 0.1),                   // 7: pink
+    Material(vec3(0.9, 0.9, 0.9), 0.8, vec3(0.0), 0.0),                   // 8: white
     Material(vec3(1.0, 1.0, 1.0), 0.0, vec3(1.0, 0.95, 0.9) * 12.0, 0.0)  // 9: light
 );
 
@@ -150,34 +126,13 @@ RaycastResult TraceRay(Ray ray) {
     return result;
 }
 
-// --------------- Random Number Generation ---------------
-
-uint PCG_Hash(uint seed) {
-    uint state = seed * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
-
-float RandomFloat(inout uint seed) {
-    seed = PCG_Hash(seed);
-    return float(seed) / 4294967295.0;
-}
-
-vec3 RandomUnitSphere(inout uint seed) {
-    vec3 v;
-    do {
-        v = vec3(RandomFloat(seed), RandomFloat(seed), RandomFloat(seed)) * 2.0 - vec3(1.0);
-    } while (dot(v, v) > 1.0 || dot(v, v) < 1e-6);
-    return normalize(v);
-}
-
 // --------------- Fragment Processing ---------------
 
 vec4 ProcessFragment(Ray ray, uint seed) {
     vec3 light = vec3(0.0);
     vec3 contribution = vec3(1.0);
 
-    const uint MAX_BOUNCES = 5;
+    const uint MAX_BOUNCES = 8;
     const uint MIN_RECURSIONS = 3;
 
     for (uint i = 0; i < MAX_BOUNCES; i++) {
