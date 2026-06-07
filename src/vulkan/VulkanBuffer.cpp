@@ -102,7 +102,7 @@ void VulkanBuffer::Destroy() {
 void VulkanBuffer::Upload(const void* data, VkDeviceSize upload_size, VkDeviceSize offset) {
     void* mapped = Map();
     if (mapped) {
-        memcpy(static_cast<char*>(mapped) + offset, data, upload_size);
+        std::memcpy(static_cast<char*>(mapped) + offset, data, upload_size);
         Unmap();
     }
 }
@@ -110,7 +110,7 @@ void VulkanBuffer::Upload(const void* data, VkDeviceSize upload_size, VkDeviceSi
 void VulkanBuffer::Download(void* data, VkDeviceSize download_size, VkDeviceSize offset) const {
     void* mapped = nullptr;
     if (vmaMapMemory(allocator, allocation, &mapped) == VK_SUCCESS) {
-        memcpy(data, static_cast<const char*>(mapped) + offset, download_size);
+        std::memcpy(data, static_cast<const char*>(mapped) + offset, download_size);
         vmaUnmapMemory(allocator, allocation);
     }
 }
