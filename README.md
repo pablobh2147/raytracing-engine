@@ -52,5 +52,5 @@ cmake -B build
 cmake --build build
 
 # Run
-./build/raytracer
+./build/Hoshizora < example-scene.txt
 ```
