@@ -107,12 +107,14 @@ void VulkanBuffer::Upload(const void* data, VkDeviceSize upload_size, VkDeviceSi
     }
 }
 
-void VulkanBuffer::Download(void* data, VkDeviceSize download_size, VkDeviceSize offset) const {
+bool VulkanBuffer::Download(void* data, VkDeviceSize download_size, VkDeviceSize offset) const {
     void* mapped = nullptr;
     if (vmaMapMemory(allocator, allocation, &mapped) == VK_SUCCESS) {
         std::memcpy(data, static_cast<const char*>(mapped) + offset, download_size);
         vmaUnmapMemory(allocator, allocation);
+        return true;
     }
+    return false;
 }
 
 void* VulkanBuffer::Map() {

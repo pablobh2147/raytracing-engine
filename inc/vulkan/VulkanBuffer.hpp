@@ -33,7 +33,7 @@ class VulkanBuffer {
     void Destroy();
 
     void Upload(const void* data, VkDeviceSize size, VkDeviceSize offset = 0);
-    void Download(void* data, VkDeviceSize size, VkDeviceSize offset = 0) const;
+    bool Download(void* data, VkDeviceSize size, VkDeviceSize offset = 0) const;
 
     void* Map();
     void Unmap();
@@ -41,6 +41,9 @@ class VulkanBuffer {
     VkBuffer GetBuffer() const { return buffer; }
     VkDeviceSize GetSize() const { return size; }
     VmaAllocation GetAllocation() const { return allocation; }
+
+    bool IsMapped() const { return is_mapped; }
+    void* GetMappedData() const { return mapped_data; }
 
    private:
     VkBuffer buffer = VK_NULL_HANDLE;

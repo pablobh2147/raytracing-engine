@@ -166,7 +166,6 @@ RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
         return result;
     }
 
-
     float inv_det = 1.0 / det;
     vec3 s = ray.origin - triangle.v1;
     float u = inv_det * dot(s, h);
