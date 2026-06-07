@@ -13,4 +13,11 @@ struct Plane {
     uint material_index;
 };
 
+struct Triangle {
+    vec3 v1;
+    vec3 v2;
+    vec3 v3;
+    uint material_index;
+};
+
 #endif // COMMON_SHAPE_H

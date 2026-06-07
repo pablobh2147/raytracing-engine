@@ -52,12 +52,12 @@ const Sphere spheres[] = Sphere[](
 );
 
 const Plane planes[] = Plane[](
-    Plane(vec3(0.0, 1.0, 0.0), -1.5, 8),  // ground plane
-    Plane(vec3(0.0, 1.0, 0.0), 5.0, 8),   // ceiling plane
-    Plane(vec3(0.0, 0.0, -1.0), -2.0, 0),   // front plane
-    Plane(vec3(0.0, 0.0, 1.0), -15.0, 8),  // back plane
-    Plane(vec3(1.0, 0.0, 0.0), -5.0, 0),  // left plane
-    Plane(vec3(-1.0, 0.0, 0.0), -5.0, 0)  // right plane
+    Plane(vec3(0.0, 1.0, 0.0), -1.5, 8)  // ground plane
+);
+
+const Triangle triangles[] = Triangle[](
+    Triangle(vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), 4),
+    Triangle(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), 2)
 );
 
 const vec3 background_color = vec3(0.05, 0.05, 0.15);
@@ -141,6 +141,64 @@ RaycastResult RaycastPlane(Plane plane, Ray ray) {
     return result;
 }
 
+RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
+    // Möller–Trumbore ray-triangle intersection algorithm
+    // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+
+    RaycastResult result;
+    result.hit = false;
+
+    vec3 edge1 = triangle.v2 - triangle.v1;
+    vec3 edge2 = triangle.v3 - triangle.v1;
+
+    vec3 normal = cross(edge1, edge2);
+
+    // Backface culling (CCW winding order)
+    if (dot(normal, ray.direction) > 0) {
+        return result;
+    }
+
+    vec3 h = cross(ray.direction, edge2);
+    float det = dot(edge1, h);
+
+    if (det > -EPSILON && det < EPSILON) {
+        // Ray is parallel to triangle
+        return result;
+    }
+
+
+    float inv_det = 1.0 / det;
+    vec3 s = ray.origin - triangle.v1;
+    float u = inv_det * dot(s, h);
+
+    if (u < 0.0 || u > 1.0) {
+        // Barycentric coordinate u is outside [0, 1]
+        return result;
+    }
+
+    vec3 q = cross(s, edge1);
+    float v = inv_det * dot(ray.direction, q);
+    if (v < 0.0 || u + v > 1.0) {
+        // Barycentric coordinate v is outside [0, 1] or u + v > 1
+        return result;
+    }
+
+    // Calculate intersection distance
+    // t is the distance along the ray where the intersection occurs
+    float t = inv_det * dot(edge2, q);
+
+    // Only consider intersections in front of the ray origin
+    if (t > EPSILON) {
+        result.hit = true;
+        result.distance = t;
+        result.position = ray.origin + ray.direction * t;
+        result.normal = normalize(normal);
+        result.material_index = triangle.material_index;
+    }
+
+    return result;
+}
+
 RaycastResult TraceRay(Ray ray) {
     RaycastResult result;
     result.hit = false;
@@ -156,6 +214,13 @@ RaycastResult TraceRay(Ray ray) {
         RaycastResult plane_result = RaycastPlane(planes[i], ray);
         if (plane_result.hit && (!result.hit || plane_result.distance < result.distance)) {
             result = plane_result;
+        }
+    }
+
+    for (int i = 0; i < triangles.length(); i++) {
+        RaycastResult triangle_result = RaycastTriangle(triangles[i], ray);
+        if (triangle_result.hit && (!result.hit || triangle_result.distance < result.distance)) {
+            result = triangle_result;
         }
     }
 
