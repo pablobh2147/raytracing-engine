@@ -99,15 +99,6 @@ int main() {
     camera.CalculateView(config.camera_pos, config.camera_target, Vector3f(0, 1, 0));
     camera.CalculateProjection(aspect);
 
-    // Strip extension from output path for indexed filenames
-    std::string base_path = output_path;
-    std::string extension = ".png";
-    auto dot_pos = output_path.rfind('.');
-    if (dot_pos != std::string::npos) {
-        base_path = output_path.substr(0, dot_pos);
-        extension = output_path.substr(dot_pos);
-    }
-
     uint32_t group_x = (width + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
     uint32_t group_y = (height + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
     std::vector<uint32_t> pixels(width * height);
@@ -129,8 +120,7 @@ int main() {
     output_buffer.Download(pixels.data(), pixels.size() * sizeof(uint32_t));
 
     // Write to PNG using stb_image_write
-    std::string frame_path = base_path + extension;
-    stbi_write_png(frame_path.c_str(), width, height, COLOR_COMPONENTS, pixels.data(), width * COLOR_COMPONENTS);
+    stbi_write_png(output_path.c_str(), width, height, COLOR_COMPONENTS, pixels.data(), width * COLOR_COMPONENTS);
 
     Logger::Info("main", "Finished rendering");
 
