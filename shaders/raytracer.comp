@@ -36,12 +36,8 @@ layout(std430, binding = BINDING_PLANES) buffer PlaneBuffer {
     Plane planes[];
 } plane_buffer;
 
-layout(std430, binding = BINDING_TRIANGLES) buffer TriangleBuffer {
-    Triangle triangles[];
-} triangle_buffer;
-
 layout(std430, binding = BINDING_VERTICES) buffer VertexBuffer {
-    vec3 vertices[];
+    Vertex vertices[];
 } vertex_buffer;
 
 layout(std430, binding = BINDING_INDICES) buffer IndexBuffer {
@@ -129,15 +125,15 @@ RaycastResult RaycastPlane(Plane plane, Ray ray) {
     return result;
 }
 
-RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
+RaycastResult RaycastTriangle(vec3 v1, vec3 v2, vec3 v3, uint material_index, Ray ray) {
     // Möller–Trumbore ray-triangle intersection algorithm
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 
     RaycastResult result;
     result.hit = false;
 
-    vec3 edge1 = triangle.v2 - triangle.v1;
-    vec3 edge2 = triangle.v3 - triangle.v1;
+    vec3 edge1 = v2 - v1;
+    vec3 edge2 = v3 - v1;
 
     vec3 normal = cross(edge1, edge2);
 
@@ -155,7 +151,7 @@ RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
     }
 
     float inv_det = 1.0 / det;
-    vec3 s = ray.origin - triangle.v1;
+    vec3 s = ray.origin - v1;
     float u = inv_det * dot(s, h);
 
     if (u < 0.0 || u > 1.0) {
@@ -180,7 +176,7 @@ RaycastResult RaycastTriangle(Triangle triangle, Ray ray) {
         result.distance = t;
         result.position = ray.origin + ray.direction * t;
         result.normal = normalize(normal);
-        result.material_index = triangle.material_index;
+        result.material_index = material_index;
     }
 
     return result;
@@ -204,8 +200,13 @@ RaycastResult TraceRay(Ray ray) {
         }
     }
 
-    for (int i = 0; i < triangle_buffer.triangles.length(); i++) {
-        RaycastResult triangle_result = RaycastTriangle(triangle_buffer.triangles[i], ray);
+    for (int i = 0; i < vertex_buffer.vertices.length(); i += 3) {
+        vec3 v1 = vertex_buffer.vertices[i].position;
+        vec3 v2 = vertex_buffer.vertices[i + 1].position;
+        vec3 v3 = vertex_buffer.vertices[i + 2].position;
+        uint material_index = vertex_buffer.vertices[i].material_index;
+
+        RaycastResult triangle_result = RaycastTriangle(v1, v2, v3, material_index, ray);
         if (triangle_result.hit && (!result.hit || triangle_result.distance < result.distance)) {
             result = triangle_result;
         }

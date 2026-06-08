@@ -48,9 +48,10 @@ bool Renderer::Initialize(const RendererConfig& config) noexcept {
 void Renderer::Destroy() noexcept {
     m_output_buffer.Destroy();
 
-    m_triangle_buffer.Destroy();
     m_sphere_buffer.Destroy();
     m_plane_buffer.Destroy();
+    m_vertex_buffer.Destroy();
+    m_index_buffer.Destroy();
     m_material_buffer.Destroy();
 
     m_compute_pipeline.Destroy();
@@ -98,14 +99,11 @@ bool Renderer::CreateOutputBuffer() noexcept {
 }
 
 bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
-    const std::vector<Triangle>& triangles = scene.GetTriangles();
     const std::vector<Sphere>& spheres = scene.GetSpheres();
     const std::vector<Plane>& planes = scene.GetPlanes();
 
-    VulkanBufferCreateInfo triangle_buffer_info = {};
-    triangle_buffer_info.size = sizeof(Triangle) * triangles.size();
-    triangle_buffer_info.usage = BufferUsage::StorageBuffer;
-    triangle_buffer_info.host_visible = true;
+    const std::vector<Vertex>& vertices = scene.GetVertices();
+    const std::vector<uint32_t>& indices = scene.GetIndices();
 
     VulkanBufferCreateInfo sphere_buffer_info = {};
     sphere_buffer_info.size = sizeof(Sphere) * spheres.size();
@@ -117,13 +115,24 @@ bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
     plane_buffer_info.usage = BufferUsage::StorageBuffer;
     plane_buffer_info.host_visible = true;
 
+    VulkanBufferCreateInfo vertex_buffer_info = {};
+    vertex_buffer_info.size = sizeof(Vertex) * vertices.size();
+    vertex_buffer_info.usage = BufferUsage::StorageBuffer;
+    vertex_buffer_info.host_visible = true;
+
+    VulkanBufferCreateInfo index_buffer_info = {};
+    index_buffer_info.size = sizeof(uint32_t) * indices.size();
+    index_buffer_info.usage = BufferUsage::StorageBuffer;
+    index_buffer_info.host_visible = true;
+
     Logger::Info("Renderer", "Creating geometry buffers...");
 
-    bool triangle_buff_created = m_triangle_buffer.Create(m_context, triangle_buffer_info);
     bool sphere_buff_created = m_sphere_buffer.Create(m_context, sphere_buffer_info);
     bool plane_buff_created = m_plane_buffer.Create(m_context, plane_buffer_info);
+    bool vertex_buff_created = m_vertex_buffer.Create(m_context, vertex_buffer_info);
+    bool index_buff_created = m_index_buffer.Create(m_context, index_buffer_info);
 
-    if (!triangle_buff_created || !sphere_buff_created || !plane_buff_created) {
+    if (!sphere_buff_created || !plane_buff_created || !vertex_buff_created || !index_buff_created) {
         Logger::Error("Renderer", "Failed to create geometry buffers!");
         return false;
     }
@@ -131,9 +140,10 @@ bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
     Logger::Info("Renderer", "Geometry buffers created successfully!");
     Logger::Info("Renderer", "Uploading geometry data...");
 
-    m_triangle_buffer.Upload(triangles.data(), triangles.size() * sizeof(Triangle));
     m_sphere_buffer.Upload(spheres.data(), spheres.size() * sizeof(Sphere));
     m_plane_buffer.Upload(planes.data(), planes.size() * sizeof(Plane));
+    m_vertex_buffer.Upload(vertices.data(), vertices.size() * sizeof(Vertex));
+    m_index_buffer.Upload(indices.data(), indices.size() * sizeof(uint32_t));
 
     Logger::Info("Renderer", "Geometry data uploaded successfully!");
 
@@ -182,15 +192,14 @@ bool Renderer::ReadImage(std::vector<uint32_t>& pixels) noexcept {
 
 bool Renderer::CreateComputePipeline() noexcept {
     ComputePipelineCreateInfo pipeline_info = {};
-    pipeline_info.shader_path = "build/shaders/raytracer.comp.spv";
+    pipeline_info.shader_path = COMPUTE_SHADER_PATH;
     pipeline_info.bindings = {
-        {BINDING_OUTPUT,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_MATERIALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_SPHERES,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_PLANES,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_TRIANGLES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_VERTICES,  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {BINDING_INDICES,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_OUTPUT,    .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_MATERIALS, .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_SPHERES,   .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_PLANES,    .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_VERTICES,  .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_INDICES,   .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     };
     pipeline_info.push_constant_size = sizeof(PushConstants);
 
@@ -198,12 +207,13 @@ bool Renderer::CreateComputePipeline() noexcept {
 }
 
 bool Renderer::UpdateDescriptorSets() noexcept {
+    // Frame buffers
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_OUTPUT, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_MATERIALS, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
 
+    // Scene data
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_MATERIALS, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_SPHERES, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_PLANES, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_TRIANGLES, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_VERTICES, m_vertex_buffer.GetBuffer(), m_vertex_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_INDICES, m_index_buffer.GetBuffer(), m_index_buffer.GetSize());
 

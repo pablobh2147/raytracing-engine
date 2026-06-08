@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include "core/Camera.hpp"
 #include "core/Scene.hpp"
@@ -28,6 +29,7 @@ struct PushConstants {
 class Renderer {
    private:
     static constexpr uint32_t COMPUTE_GROUP_SIZE = 16;
+    static constexpr std::string_view COMPUTE_SHADER_PATH = "build/shaders/raytracer.comp.spv";
 
    public:
     Renderer() = default;
@@ -78,7 +80,6 @@ class Renderer {
 
     VulkanBuffer m_sphere_buffer;
     VulkanBuffer m_plane_buffer;
-    VulkanBuffer m_triangle_buffer;
     VulkanBuffer m_vertex_buffer;
     VulkanBuffer m_index_buffer;
 };

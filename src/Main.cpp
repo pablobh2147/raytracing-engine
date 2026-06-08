@@ -38,8 +38,8 @@ void LoadSceneConfig(SceneConfig& config) {
     std::cin >> config.camera_target.x >> config.camera_target.y >> config.camera_target.z;
 }
 
-void LoadObj(std::istream& input, Scene& scene) {
-    std::vector<Vector3f> vertices;
+void LoadObj(std::istream& input, Scene& scene, uint32_t material_index) {
+    std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
     vertices.reserve(1000);
@@ -58,7 +58,7 @@ void LoadObj(std::istream& input, Scene& scene) {
         if (command == "v") {
             float x, y, z;
             iss >> x >> y >> z;
-            vertices.push_back(Vector3f(x, y, z));
+            vertices.push_back(Vertex(Vector3f(x, y, z), material_index));
         } else if (command == "f") {
             uint32_t a, b, c;
             iss >> a >> b >> c;
@@ -68,19 +68,12 @@ void LoadObj(std::istream& input, Scene& scene) {
         }
     }
 
-    std::vector<Triangle> triangles;
-    triangles.reserve(indices.size() / 3);
-
-    for (size_t i = 0; i < indices.size(); i += 3) {
-        triangles.push_back(Triangle(vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], 2));
-    }
-
-    scene.AddMesh(triangles);
+    scene.AddMesh(vertices, indices);
 }
 
 void LoadScene(Scene& scene) {
     std::ifstream obj_file("examples/models/cow.obj");
-    LoadObj(obj_file, scene);
+    LoadObj(obj_file, scene, 2);
     obj_file.close();
 
     scene.AddMaterial(Material(Vector3f(0.9f, 0.1f, 0.1f), 0.2f, Vector3f(0.0f), 0.0f));                       // 0: red

@@ -22,4 +22,9 @@ struct Triangle {
     uint _pad2;
 };
 
+struct Vertex {
+    vec3 position;
+    uint material_index;
+};
+
 #endif // COMMON_SHAPE_H
