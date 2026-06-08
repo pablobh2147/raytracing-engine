@@ -28,7 +28,6 @@ struct PushConstants {
 
 class Renderer {
    private:
-    static constexpr uint32_t COMPUTE_GROUP_SIZE = 16;
     static constexpr std::string_view COMPUTE_SHADER_PATH = "build/shaders/raytracer.comp.spv";
 
    public:

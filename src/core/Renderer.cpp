@@ -4,6 +4,7 @@
 
 #include "core/Logger.hpp"
 #include "shared/binding-constants.h"
+#include "shared/compute-constants.h"
 #include "vulkan/VulkanBuffer.hpp"
 
 namespace hzr {
@@ -169,8 +170,8 @@ bool Renderer::CreateMaterialBuffer(const Scene& scene) noexcept {
 }
 
 void Renderer::Render(const Camera& camera) noexcept {
-    uint32_t group_x = (m_config.width + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
-    uint32_t group_y = (m_config.height + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
+    uint32_t group_x = (m_config.width + COMPUTE_WORKGROUP_SIZE - 1) / COMPUTE_WORKGROUP_SIZE;
+    uint32_t group_y = (m_config.height + COMPUTE_WORKGROUP_SIZE - 1) / COMPUTE_WORKGROUP_SIZE;
 
     // Record and submit compute commands
     VkCommandBuffer cmd = m_context.BeginSingleTimeCommands();

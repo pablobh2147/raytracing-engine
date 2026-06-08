@@ -1,14 +1,16 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
-
 #include "common/rng.glsl"
 #include "common/material.glsl"
 #include "common/shape.glsl"
 #include "common/ray.glsl"
 #include "common/constants.glsl"
+
 #include "shared/binding-constants.h"
+#include "shared/compute-constants.h"
+
+layout(local_size_x = COMPUTE_WORKGROUP_SIZE, local_size_y = COMPUTE_WORKGROUP_SIZE, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
     uint width;
