@@ -2,6 +2,10 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <istream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -9,6 +13,7 @@
 #include "core/Logger.hpp"
 #include "core/Renderer.hpp"
 #include "core/Scene.hpp"
+#include "core/Shapes.hpp"
 #include "math/Vector.hpp"
 
 using namespace hzr;
@@ -33,9 +38,50 @@ void LoadSceneConfig(SceneConfig& config) {
     std::cin >> config.camera_target.x >> config.camera_target.y >> config.camera_target.z;
 }
 
+void LoadObj(std::istream& input, Scene& scene) {
+    std::vector<Vector3f> vertices;
+    std::vector<uint32_t> indices;
+
+    vertices.reserve(1000);
+    indices.reserve(1000);
+
+    std::string line;
+    while (std::getline(input, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+
+        std::istringstream iss(line);
+        std::string command;
+        iss >> command;
+
+        if (command == "v") {
+            float x, y, z;
+            iss >> x >> y >> z;
+            vertices.push_back(Vector3f(x, y, z));
+        } else if (command == "f") {
+            uint32_t a, b, c;
+            iss >> a >> b >> c;
+            indices.push_back(a - 1);
+            indices.push_back(b - 1);
+            indices.push_back(c - 1);
+        }
+    }
+
+    std::vector<Triangle> triangles;
+    triangles.reserve(indices.size() / 3);
+
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        triangles.push_back(Triangle(vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], 2));
+    }
+
+    scene.AddMesh(triangles);
+}
+
 void LoadScene(Scene& scene) {
-    scene.AddTriangle(Triangle(Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), 2));
-    scene.AddTriangle(Triangle(Vector3f(1.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 1.0f, 0.0f), 2));
+    std::ifstream obj_file("examples/models/cow.obj");
+    LoadObj(obj_file, scene);
+    obj_file.close();
 }
 
 int main() {
@@ -50,22 +96,29 @@ int main() {
     renderer_config.height = config.height;
     renderer_config.samples = config.samples;
 
+    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
+    Logger::Info("main", "Loading scene...");
+    LoadScene(*scene);
+    Logger::Info("main", "Scene loaded");
+
     Renderer renderer;
     if (!renderer.Initialize(renderer_config)) {
         Logger::Error("main", "Failed to initialize renderer");
         return 1;
     }
 
-    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-    LoadScene(*scene);
-
     Camera camera(config.camera_fov, 0.01F, 100.0F);
     camera.CalculateView(config.camera_pos, config.camera_target, Vector3f(0, 1, 0));
     float aspect = static_cast<float>(renderer_config.width) / static_cast<float>(renderer_config.height);
     camera.CalculateProjection(aspect);
 
+    Logger::Info("main", "Loading scene...");
     renderer.SetScene(scene);
-    renderer.BakeScene();
+    if (!renderer.BakeScene()) {
+        Logger::Error("main", "Failed to bake scene");
+        return 1;
+    }
+    Logger::Info("main", "Scene loaded");
 
     Logger::Info("main", "Rendering...");
     renderer.Render(camera);

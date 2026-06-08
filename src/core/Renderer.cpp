@@ -1,5 +1,7 @@
 #include "core/Renderer.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include "core/Logger.hpp"
 #include "vulkan/VulkanBuffer.hpp"
 
@@ -8,26 +10,36 @@ namespace hzr {
 bool Renderer::Initialize(const RendererConfig& config) noexcept {
     m_config = config;
 
+    Logger::Info("Renderer", "Initializing renderer...");
+
     if (!m_context.Initialize()) {
         Logger::Error("Renderer", "Failed to initialize Vulkan context");
         return false;
     }
+
+    Logger::Info("Renderer", "Vulkan context initialized");
 
     if (!CreateOutputBuffer()) {
         Logger::Error("Renderer", "Failed to create output buffer");
         return false;
     }
 
+    Logger::Info("Renderer", "Output buffer created");
+
     if (!CreateComputePipeline()) {
         Logger::Error("Renderer", "Failed to create compute pipeline");
         return false;
     }
+
+    Logger::Info("Renderer", "Compute pipeline created");
 
     m_descriptor_set = m_compute_pipeline.AllocateDescriptorSet();
     if (m_descriptor_set == VK_NULL_HANDLE) {
         Logger::Error("Renderer", "Failed to allocate descriptor set");
         return false;
     }
+
+    Logger::Info("Renderer", "Descriptor set allocated");
 
     return true;
 }
@@ -52,10 +64,12 @@ bool Renderer::BakeScene() noexcept {
         return false;
     }
 
+    Logger::Info("Renderer", "Creating geometry buffers...");
     if (!CreateGeometryBuffers(*m_scene)) {
         Logger::Error("Renderer", "Failed to create geometry buffers");
         return false;
     }
+    Logger::Info("Renderer", "Geometry buffers created");
 
     // if (!CreateMaterialBuffer(*m_scene)) {
     //     Logger::Error("Renderer", "Failed to create material buffer");
@@ -66,6 +80,7 @@ bool Renderer::BakeScene() noexcept {
         Logger::Error("Renderer", "Failed to update descriptor sets");
         return false;
     }
+    Logger::Info("Renderer", "Descriptor sets updated");
 
     return true;
 }
@@ -86,6 +101,8 @@ bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
     triangle_buffer_info.size = sizeof(Triangle) * triangles.size();
     triangle_buffer_info.usage = BufferUsage::StorageBuffer;
     triangle_buffer_info.host_visible = true;
+
+    Logger::Info("Renderer", "Creating triangle buffer with size: {}", triangle_buffer_info.size);
 
     if (!m_triangle_buffer.Create(m_context, triangle_buffer_info)) {
         Logger::Error("Renderer", "Failed to create triangle buffer");
@@ -153,8 +170,8 @@ bool Renderer::CreateComputePipeline() noexcept {
 bool Renderer::UpdateDescriptorSets() noexcept {
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 0, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
 
-    // m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 2, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 1, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
+    // m_compute_pipeline.UpdateDe scriptorSet(m_descriptor_set, 2, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
 
     return true;
 }
