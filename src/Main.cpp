@@ -82,6 +82,21 @@ void LoadScene(Scene& scene) {
     std::ifstream obj_file("examples/models/cow.obj");
     LoadObj(obj_file, scene);
     obj_file.close();
+
+    scene.AddSphere(Sphere(Vector3f(0.0, 0.0, -5.0), 1.0, 0));    // center red
+    scene.AddSphere(Sphere(Vector3f(2.5, 0.0, -4.0), 0.8, 1));    // right green
+    scene.AddSphere(Sphere(Vector3f(-2.5, 0.0, -4.0), 0.8, 2));   // left blue metallic
+    scene.AddSphere(Sphere(Vector3f(1.2, -0.5, -6.5), 0.6, 3));   // orange
+    scene.AddSphere(Sphere(Vector3f(-1.2, -0.5, -6.5), 0.6, 4));  // purple
+    scene.AddSphere(Sphere(Vector3f(4.0, 0.5, -6.0), 0.7, 5));    // yellow
+    scene.AddSphere(Sphere(Vector3f(-4.0, 0.5, -6.0), 0.7, 6));   // cyan
+    scene.AddSphere(Sphere(Vector3f(0.0, 1.5, -3.5), 0.5, 7));    // pink
+    scene.AddSphere(Sphere(Vector3f(3.5, -0.3, -8.0), 0.9, 8));   // white
+    scene.AddSphere(Sphere(Vector3f(-3.5, -0.3, -8.0), 0.9, 0));  // red
+    scene.AddSphere(Sphere(Vector3f(0.0, 6.0, -3.0), 0.6, 9));    // light 1
+    scene.AddSphere(Sphere(Vector3f(-5.0, 6.0, -5.0), 0.4, 9));   // light 2
+
+    scene.AddPlane(Plane(Vector3f(0.0, 1.0, 0.0), -1.5, 8));  // ground plane
 }
 
 int main() {

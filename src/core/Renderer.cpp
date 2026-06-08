@@ -48,6 +48,8 @@ void Renderer::Destroy() noexcept {
     m_output_buffer.Destroy();
 
     m_triangle_buffer.Destroy();
+    m_sphere_buffer.Destroy();
+    m_plane_buffer.Destroy();
     m_material_buffer.Destroy();
 
     m_compute_pipeline.Destroy();
@@ -95,27 +97,50 @@ bool Renderer::CreateOutputBuffer() noexcept {
 }
 
 bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
-    const auto& triangles = scene.GetTriangles();
+    const std::vector<Triangle>& triangles = scene.GetTriangles();
+    const std::vector<Sphere>& spheres = scene.GetSpheres();
+    const std::vector<Plane>& planes = scene.GetPlanes();
 
     VulkanBufferCreateInfo triangle_buffer_info = {};
     triangle_buffer_info.size = sizeof(Triangle) * triangles.size();
     triangle_buffer_info.usage = BufferUsage::StorageBuffer;
     triangle_buffer_info.host_visible = true;
 
-    Logger::Info("Renderer", "Creating triangle buffer with size: {}", triangle_buffer_info.size);
+    VulkanBufferCreateInfo sphere_buffer_info = {};
+    sphere_buffer_info.size = sizeof(Sphere) * spheres.size();
+    sphere_buffer_info.usage = BufferUsage::StorageBuffer;
+    sphere_buffer_info.host_visible = true;
 
-    if (!m_triangle_buffer.Create(m_context, triangle_buffer_info)) {
-        Logger::Error("Renderer", "Failed to create triangle buffer");
+    VulkanBufferCreateInfo plane_buffer_info = {};
+    plane_buffer_info.size = sizeof(Plane) * planes.size();
+    plane_buffer_info.usage = BufferUsage::StorageBuffer;
+    plane_buffer_info.host_visible = true;
+
+    Logger::Info("Renderer", "Creating geometry buffers...");
+
+    bool triangle_buff_created = m_triangle_buffer.Create(m_context, triangle_buffer_info);
+    bool sphere_buff_created = m_sphere_buffer.Create(m_context, sphere_buffer_info);
+    bool plane_buff_created = m_plane_buffer.Create(m_context, plane_buffer_info);
+
+    if (!triangle_buff_created || !sphere_buff_created || !plane_buff_created) {
+        Logger::Error("Renderer", "Failed to create geometry buffers!");
         return false;
     }
 
+    Logger::Info("Renderer", "Geometry buffers created successfully!");
+    Logger::Info("Renderer", "Uploading geometry data...");
+
     m_triangle_buffer.Upload(triangles.data(), triangles.size() * sizeof(Triangle));
+    m_sphere_buffer.Upload(spheres.data(), spheres.size() * sizeof(Sphere));
+    m_plane_buffer.Upload(planes.data(), planes.size() * sizeof(Plane));
+
+    Logger::Info("Renderer", "Geometry data uploaded successfully!");
 
     return true;
 }
 
 bool Renderer::CreateMaterialBuffer(const Scene& scene) noexcept {
-    const auto& materials = scene.GetMaterials();
+    const std::vector<Material>& materials = scene.GetMaterials();
 
     VulkanBufferCreateInfo material_buffer_info = {};
     material_buffer_info.size = sizeof(Material) * materials.size();
@@ -160,7 +185,8 @@ bool Renderer::CreateComputePipeline() noexcept {
     pipeline_info.bindings = {
         {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
         {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        //{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     };
     pipeline_info.push_constant_size = sizeof(PushConstants);
 
@@ -171,7 +197,8 @@ bool Renderer::UpdateDescriptorSets() noexcept {
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 0, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
 
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 1, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
-    // m_compute_pipeline.UpdateDe scriptorSet(m_descriptor_set, 2, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 2, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 3, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
 
     return true;
 }

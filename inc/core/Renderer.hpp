@@ -77,6 +77,8 @@ class Renderer {
     VulkanBuffer m_material_buffer;
 
     VulkanBuffer m_triangle_buffer;
+    VulkanBuffer m_sphere_buffer;
+    VulkanBuffer m_plane_buffer;
 };
 
 }  // namespace hzr
