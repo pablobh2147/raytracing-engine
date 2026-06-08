@@ -6,6 +6,7 @@
 #include "shared/binding-constants.h"
 #include "shared/compute-constants.h"
 #include "vulkan/VulkanBuffer.hpp"
+#include "vulkan/VulkanContext.hpp"
 
 namespace hzr {
 
@@ -99,54 +100,50 @@ bool Renderer::CreateOutputBuffer() noexcept {
     return m_output_buffer.Create(m_context, buffer_info);
 }
 
-bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
-    const std::vector<Sphere>& spheres = scene.GetSpheres();
-    const std::vector<Plane>& planes = scene.GetPlanes();
+template <typename T>
+inline bool CreateBuffer(VulkanContext& ctx, VulkanBuffer& buffer, const std::vector<T>& data) {
+    VulkanBufferCreateInfo buffer_info = {};
+    buffer_info.size = data.size() * sizeof(T);
+    buffer_info.usage = BufferUsage::StorageBuffer;
+    buffer_info.host_visible = true;
 
-    const std::vector<Vertex>& vertices = scene.GetVertices();
-    const std::vector<uint32_t>& indices = scene.GetIndices();
-
-    VulkanBufferCreateInfo sphere_buffer_info = {};
-    sphere_buffer_info.size = sizeof(Sphere) * spheres.size();
-    sphere_buffer_info.usage = BufferUsage::StorageBuffer;
-    sphere_buffer_info.host_visible = true;
-
-    VulkanBufferCreateInfo plane_buffer_info = {};
-    plane_buffer_info.size = sizeof(Plane) * planes.size();
-    plane_buffer_info.usage = BufferUsage::StorageBuffer;
-    plane_buffer_info.host_visible = true;
-
-    VulkanBufferCreateInfo vertex_buffer_info = {};
-    vertex_buffer_info.size = sizeof(Vertex) * vertices.size();
-    vertex_buffer_info.usage = BufferUsage::StorageBuffer;
-    vertex_buffer_info.host_visible = true;
-
-    VulkanBufferCreateInfo index_buffer_info = {};
-    index_buffer_info.size = sizeof(uint32_t) * indices.size();
-    index_buffer_info.usage = BufferUsage::StorageBuffer;
-    index_buffer_info.host_visible = true;
-
-    Logger::Info("Renderer", "Creating geometry buffers...");
-
-    bool sphere_buff_created = m_sphere_buffer.Create(m_context, sphere_buffer_info);
-    bool plane_buff_created = m_plane_buffer.Create(m_context, plane_buffer_info);
-    bool vertex_buff_created = m_vertex_buffer.Create(m_context, vertex_buffer_info);
-    bool index_buff_created = m_index_buffer.Create(m_context, index_buffer_info);
-
-    if (!sphere_buff_created || !plane_buff_created || !vertex_buff_created || !index_buff_created) {
-        Logger::Error("Renderer", "Failed to create geometry buffers!");
+    if (!buffer.Create(ctx, buffer_info)) {
         return false;
     }
 
-    Logger::Info("Renderer", "Geometry buffers created successfully!");
-    Logger::Info("Renderer", "Uploading geometry data...");
+    buffer.Upload(data.data(), buffer_info.size);
+    return true;
+}
 
-    m_sphere_buffer.Upload(spheres.data(), spheres.size() * sizeof(Sphere));
-    m_plane_buffer.Upload(planes.data(), planes.size() * sizeof(Plane));
-    m_vertex_buffer.Upload(vertices.data(), vertices.size() * sizeof(Vertex));
-    m_index_buffer.Upload(indices.data(), indices.size() * sizeof(uint32_t));
+bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
+    const std::vector<Sphere>& spheres = scene.GetSpheres();
+    const std::vector<Plane>& planes = scene.GetPlanes();
+    const std::vector<Vertex>& vertices = scene.GetVertices();
+    const std::vector<uint32_t>& indices = scene.GetIndices();
 
-    Logger::Info("Renderer", "Geometry data uploaded successfully!");
+    Logger::Info("Renderer", "Creating geometry buffers...");
+
+    if (!CreateBuffer(m_context, m_sphere_buffer, spheres)) {
+        Logger::Error("Renderer", "Failed to create sphere buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_plane_buffer, planes)) {
+        Logger::Error("Renderer", "Failed to create plane buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_vertex_buffer, vertices)) {
+        Logger::Error("Renderer", "Failed to create vertex buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_index_buffer, indices)) {
+        Logger::Error("Renderer", "Failed to create index buffer!");
+        return false;
+    }
+
+    Logger::Info("Renderer", "Geometry data created successfully!");
 
     return true;
 }
@@ -154,17 +151,15 @@ bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
 bool Renderer::CreateMaterialBuffer(const Scene& scene) noexcept {
     const std::vector<Material>& materials = scene.GetMaterials();
 
-    VulkanBufferCreateInfo material_buffer_info = {};
-    material_buffer_info.size = sizeof(Material) * materials.size();
-    material_buffer_info.usage = BufferUsage::StorageBuffer;
-    material_buffer_info.host_visible = true;
+    if (materials.empty()) {
+        Logger::Warning("Renderer", "No materials to create buffer for!");
+        return true;
+    }
 
-    if (!m_material_buffer.Create(m_context, material_buffer_info)) {
+    if (!CreateBuffer(m_context, m_material_buffer, materials)) {
         Logger::Error("Renderer", "Failed to create material buffer");
         return false;
     }
-
-    m_material_buffer.Upload(materials.data(), materials.size() * sizeof(Material));
 
     return true;
 }
@@ -213,6 +208,7 @@ bool Renderer::UpdateDescriptorSets() noexcept {
 
     // Scene data
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_MATERIALS, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
+
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_SPHERES, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_PLANES, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
     m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_VERTICES, m_vertex_buffer.GetBuffer(), m_vertex_buffer.GetSize());
