@@ -1,4 +1,5 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -7,6 +8,7 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #include "common/shape.glsl"
 #include "common/ray.glsl"
 #include "common/constants.glsl"
+#include "shared/binding-constants.h"
 
 layout(push_constant) uniform PushConstants {
     uint width;
@@ -16,28 +18,35 @@ layout(push_constant) uniform PushConstants {
     mat4 projection;
 } pc;
 
-layout(std430, binding = 0) buffer OutputBuffer {
+layout(std430, binding = BINDING_OUTPUT) buffer OutputBuffer {
     uint pixels[];
 } image_buffer;
 
 // --------------- Scene Data ---------------
 
-layout(std430, binding = 1) buffer MaterialBuffer {
+layout(std430, binding = BINDING_MATERIALS) buffer MaterialBuffer {
     Material materials[];
 } material_buffer;
 
-layout(std430, binding = 2) buffer TriangleBuffer {
-    Triangle triangles[];
-} triangle_buffer;
-
-layout(std430, binding = 3) buffer SphereBuffer {
+layout(std430, binding = BINDING_SPHERES) buffer SphereBuffer {
     Sphere spheres[];
 } sphere_buffer;
 
-layout(std430, binding = 4) buffer PlaneBuffer {
+layout(std430, binding = BINDING_PLANES) buffer PlaneBuffer {
     Plane planes[];
 } plane_buffer;
 
+layout(std430, binding = BINDING_TRIANGLES) buffer TriangleBuffer {
+    Triangle triangles[];
+} triangle_buffer;
+
+layout(std430, binding = BINDING_VERTICES) buffer VertexBuffer {
+    vec3 vertices[];
+} vertex_buffer;
+
+layout(std430, binding = BINDING_INDICES) buffer IndexBuffer {
+    uint indices[];
+} index_buffer;
 
 const vec3 background_color = vec3(0.05, 0.05, 0.15);
 

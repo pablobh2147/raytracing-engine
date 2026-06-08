@@ -3,6 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "core/Logger.hpp"
+#include "shared/binding-constants.h"
 #include "vulkan/VulkanBuffer.hpp"
 
 namespace hzr {
@@ -183,11 +184,13 @@ bool Renderer::CreateComputePipeline() noexcept {
     ComputePipelineCreateInfo pipeline_info = {};
     pipeline_info.shader_path = "build/shaders/raytracer.comp.spv";
     pipeline_info.bindings = {
-        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_OUTPUT,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_MATERIALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_SPHERES,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_PLANES,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_TRIANGLES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_VERTICES,  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {BINDING_INDICES,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     };
     pipeline_info.push_constant_size = sizeof(PushConstants);
 
@@ -195,12 +198,14 @@ bool Renderer::CreateComputePipeline() noexcept {
 }
 
 bool Renderer::UpdateDescriptorSets() noexcept {
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 0, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 1, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_OUTPUT, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_MATERIALS, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
 
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 2, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 3, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 4, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_SPHERES, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_PLANES, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_TRIANGLES, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_VERTICES, m_vertex_buffer.GetBuffer(), m_vertex_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_INDICES, m_index_buffer.GetBuffer(), m_index_buffer.GetSize());
 
     return true;
 }
