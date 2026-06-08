@@ -200,11 +200,15 @@ RaycastResult TraceRay(Ray ray) {
         }
     }
 
-    for (int i = 0; i < vertex_buffer.vertices.length(); i += 3) {
-        vec3 v1 = vertex_buffer.vertices[i].position;
-        vec3 v2 = vertex_buffer.vertices[i + 1].position;
-        vec3 v3 = vertex_buffer.vertices[i + 2].position;
-        uint material_index = vertex_buffer.vertices[i].material_index;
+    for (int i = 0; i < index_buffer.indices.length(); i += 3) {
+        uint idx1 = index_buffer.indices[i];
+        uint idx2 = index_buffer.indices[i + 1];
+        uint idx3 = index_buffer.indices[i + 2];
+
+        vec3 v1 = vertex_buffer.vertices[idx1].position;
+        vec3 v2 = vertex_buffer.vertices[idx2].position;
+        vec3 v3 = vertex_buffer.vertices[idx3].position;
+        uint material_index = vertex_buffer.vertices[idx1].material_index;
 
         RaycastResult triangle_result = RaycastTriangle(v1, v2, v3, material_index, ray);
         if (triangle_result.hit && (!result.hit || triangle_result.distance < result.distance)) {
