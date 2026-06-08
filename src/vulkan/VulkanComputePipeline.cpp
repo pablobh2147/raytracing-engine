@@ -188,8 +188,7 @@ VkDescriptorSet VulkanComputePipeline::AllocateDescriptorSet() {
     return descriptor_set;
 }
 
-void VulkanComputePipeline::UpdateDescriptorSet(VkDescriptorSet set, uint32_t binding, VkBuffer buffer,
-                                                VkDeviceSize size, VkDeviceSize offset) {
+void VulkanComputePipeline::UpdateDescriptorSet(VkDescriptorSet set, uint32_t binding, VkBuffer buffer, VkDeviceSize size, VkDeviceSize offset) {
     VkDescriptorBufferInfo buffer_info {};
     buffer_info.buffer = buffer;
     buffer_info.offset = offset;
@@ -207,8 +206,7 @@ void VulkanComputePipeline::UpdateDescriptorSet(VkDescriptorSet set, uint32_t bi
     vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
-void VulkanComputePipeline::Dispatch(VkCommandBuffer cmd, uint32_t group_count_x, uint32_t group_count_y,
-                                     uint32_t group_count_z) {
+void VulkanComputePipeline::Dispatch(VkCommandBuffer cmd, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdDispatch(cmd, group_count_x, group_count_y, group_count_z);
 }
