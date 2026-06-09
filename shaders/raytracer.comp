@@ -140,9 +140,9 @@ RaycastResult RaycastTriangle(vec3 v1, vec3 v2, vec3 v3, uint material_index, Ra
     vec3 normal = cross(edge1, edge2);
 
     // Backface culling (CCW winding order)
-    if (dot(normal, ray.direction) > 0) {
-        return result;
-    }
+    // if (dot(normal, ray.direction) > 0) {
+    //     return result;
+    // }
 
     vec3 h = cross(ray.direction, edge2);
     float det = dot(edge1, h);
