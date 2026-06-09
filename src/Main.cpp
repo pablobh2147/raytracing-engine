@@ -2,70 +2,53 @@
 
 #include <cmath>
 #include <cstdint>
-#include <string>
+#include <cstdlib>
+#include <iostream>
 #include <vector>
 
 #include "core/Camera.hpp"
 #include "core/Logger.hpp"
 #include "core/Renderer.hpp"
 #include "core/Scene.hpp"
+#include "loaders/SceneLoader.hpp"
 #include "math/Vector.hpp"
 
 using namespace hzr;
 
-struct SceneConfig {
-    uint32_t width;
-    uint32_t height;
-    uint32_t samples;
-    std::string output_path;
+void RenderScene(const std::string& scene_path_str) {
+    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
-    float camera_fov;
-    Vector3f camera_pos;
-    Vector3f camera_target;
-};
+    std::filesystem::path scene_path = scene_path_str;
 
-void LoadSceneConfig(SceneConfig& config) {
-    std::cin >> config.width >> config.height;
-    std::cin >> config.samples;
-    std::cin >> config.output_path;
-    std::cin >> config.camera_fov;
-    std::cin >> config.camera_pos.x >> config.camera_pos.y >> config.camera_pos.z;
-    std::cin >> config.camera_target.x >> config.camera_target.y >> config.camera_target.z;
-}
+    Logger::Info("main", "Loading scene from {}", scene_path_str);
+    LoadScene(scene_path, *scene);
+    Logger::Info("main", "Scene loaded");
 
-void LoadScene(Scene& scene) {
-    scene.AddTriangle(Triangle(Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), 2));
-    scene.AddTriangle(Triangle(Vector3f(1.0f, 0.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector3f(1.0f, 1.0f, 0.0f), 2));
-}
-
-int main() {
-    constexpr uint32_t COLOR_COMPONENTS = 4;
-    constexpr uint32_t COMPUTE_GROUP_SIZE = 16;
-
-    SceneConfig config;
-    LoadSceneConfig(config);
+    const SceneProperties& properties = scene->GetProperties();
 
     RendererConfig renderer_config;
-    renderer_config.width = config.width;
-    renderer_config.height = config.height;
-    renderer_config.samples = config.samples;
+    renderer_config.width = properties.width;
+    renderer_config.height = properties.height;
+    renderer_config.samples = properties.samples;
 
     Renderer renderer;
     if (!renderer.Initialize(renderer_config)) {
         Logger::Error("main", "Failed to initialize renderer");
-        return 1;
+        return;
     }
 
-    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-    LoadScene(*scene);
-
-    Camera camera(config.camera_fov, 0.01F, 100.0F);
-    camera.CalculateView(config.camera_pos, config.camera_target, Vector3f(0, 1, 0));
+    Camera camera(properties.camera_fov, 0.01F, 100.0F);
+    camera.CalculateView(properties.camera_pos, properties.camera_target, Vector3f(0, 1, 0));
     float aspect = static_cast<float>(renderer_config.width) / static_cast<float>(renderer_config.height);
     camera.CalculateProjection(aspect);
 
+    Logger::Info("main", "Loading scene...");
     renderer.SetScene(scene);
-    renderer.BakeScene();
+    if (!renderer.BakeScene()) {
+        Logger::Error("main", "Failed to bake scene");
+        return;
+    }
+    Logger::Info("main", "Scene loaded");
 
     Logger::Info("main", "Rendering...");
     renderer.Render(camera);
@@ -75,13 +58,38 @@ int main() {
     std::vector<uint32_t> pixels(renderer_config.width * renderer_config.height);
     if (!renderer.ReadImage(pixels)) {
         Logger::Error("main", "Failed to read image");
-        return 1;
+        return;
     }
 
     // Write to PNG using stb_image_write
-    stbi_write_png(config.output_path.c_str(), renderer_config.width, renderer_config.height, COLOR_COMPONENTS, pixels.data(), renderer_config.width * COLOR_COMPONENTS);
+    stbi_write_png(properties.output_path.c_str(), renderer_config.width, renderer_config.height, Renderer::COLOR_COMPONENTS, pixels.data(), renderer_config.width * Renderer::COLOR_COMPONENTS);
 
-    Logger::Info("main", "Wrote image to {}", config.output_path);
+    Logger::Info("main", "Wrote image to {}", properties.output_path);
+}
+
+void PrintHelp(const char* program_name) {
+    std::cout << "Usage: " << program_name << " <scene_path>" << std::endl;
+}
+
+int main(int argc, char** argv) {
+    const char* program_name = "Hoshizora";
+
+    if (argc >= 1) {
+        program_name = argv[0];
+    }
+
+    if (argc >= 2 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help")) {
+        PrintHelp(program_name);
+        return 0;
+    }
+
+    if (argc <= 1) {
+        PrintHelp(program_name);
+        return 1;
+    }
+
+    std::string scene_path_str = argv[1];
+    RenderScene(scene_path_str);
 
     return 0;
 }

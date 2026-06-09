@@ -1,0 +1,8 @@
+width=512
+height=512
+samples=32
+output_path=output/output.png
+camera_fov=70.0
+camera_pos=8 5 -8
+camera_target=0 0 0
+model_path=models/teapot.obj

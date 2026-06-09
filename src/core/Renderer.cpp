@@ -1,27 +1,40 @@
 #include "core/Renderer.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include "core/Logger.hpp"
+#include "shared/binding-constants.h"
+#include "shared/compute-constants.h"
 #include "vulkan/VulkanBuffer.hpp"
+#include "vulkan/VulkanContext.hpp"
 
 namespace hzr {
 
 bool Renderer::Initialize(const RendererConfig& config) noexcept {
     m_config = config;
 
+    Logger::Info("Renderer", "Initializing renderer...");
+
     if (!m_context.Initialize()) {
         Logger::Error("Renderer", "Failed to initialize Vulkan context");
         return false;
     }
+
+    Logger::Info("Renderer", "Vulkan context initialized");
 
     if (!CreateOutputBuffer()) {
         Logger::Error("Renderer", "Failed to create output buffer");
         return false;
     }
 
+    Logger::Info("Renderer", "Output buffer created");
+
     if (!CreateComputePipeline()) {
         Logger::Error("Renderer", "Failed to create compute pipeline");
         return false;
     }
+
+    Logger::Info("Renderer", "Compute pipeline created");
 
     m_descriptor_set = m_compute_pipeline.AllocateDescriptorSet();
     if (m_descriptor_set == VK_NULL_HANDLE) {
@@ -29,13 +42,18 @@ bool Renderer::Initialize(const RendererConfig& config) noexcept {
         return false;
     }
 
+    Logger::Info("Renderer", "Descriptor set allocated");
+
     return true;
 }
 
 void Renderer::Destroy() noexcept {
     m_output_buffer.Destroy();
 
-    m_triangle_buffer.Destroy();
+    m_sphere_buffer.Destroy();
+    m_plane_buffer.Destroy();
+    m_vertex_buffer.Destroy();
+    m_index_buffer.Destroy();
     m_material_buffer.Destroy();
 
     m_compute_pipeline.Destroy();
@@ -52,20 +70,23 @@ bool Renderer::BakeScene() noexcept {
         return false;
     }
 
+    Logger::Info("Renderer", "Creating geometry buffers...");
     if (!CreateGeometryBuffers(*m_scene)) {
         Logger::Error("Renderer", "Failed to create geometry buffers");
         return false;
     }
+    Logger::Info("Renderer", "Geometry buffers created");
 
-    // if (!CreateMaterialBuffer(*m_scene)) {
-    //     Logger::Error("Renderer", "Failed to create material buffer");
-    //     return false;
-    // }
+    if (!CreateMaterialBuffer(*m_scene)) {
+        Logger::Error("Renderer", "Failed to create material buffer");
+        return false;
+    }
 
     if (!UpdateDescriptorSets()) {
         Logger::Error("Renderer", "Failed to update descriptor sets");
         return false;
     }
+    Logger::Info("Renderer", "Descriptor sets updated");
 
     return true;
 }
@@ -79,45 +100,73 @@ bool Renderer::CreateOutputBuffer() noexcept {
     return m_output_buffer.Create(m_context, buffer_info);
 }
 
-bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
-    const auto& triangles = scene.GetTriangles();
+template <typename T>
+inline bool CreateBuffer(VulkanContext& ctx, VulkanBuffer& buffer, const std::vector<T>& data) {
+    VulkanBufferCreateInfo buffer_info = {};
+    buffer_info.size = data.size() * sizeof(T);
+    buffer_info.usage = BufferUsage::StorageBuffer;
+    buffer_info.host_visible = true;
 
-    VulkanBufferCreateInfo triangle_buffer_info = {};
-    triangle_buffer_info.size = sizeof(Triangle) * triangles.size();
-    triangle_buffer_info.usage = BufferUsage::StorageBuffer;
-    triangle_buffer_info.host_visible = true;
-
-    if (!m_triangle_buffer.Create(m_context, triangle_buffer_info)) {
-        Logger::Error("Renderer", "Failed to create triangle buffer");
+    if (!buffer.Create(ctx, buffer_info)) {
         return false;
     }
 
-    m_triangle_buffer.Upload(triangles.data(), triangles.size() * sizeof(Triangle));
+    buffer.Upload(data.data(), buffer_info.size);
+    return true;
+}
+
+bool Renderer::CreateGeometryBuffers(const Scene& scene) noexcept {
+    const std::vector<Sphere>& spheres = scene.GetSpheres();
+    const std::vector<Plane>& planes = scene.GetPlanes();
+    const std::vector<Vertex>& vertices = scene.GetVertices();
+    const std::vector<uint32_t>& indices = scene.GetIndices();
+
+    Logger::Info("Renderer", "Creating geometry buffers...");
+
+    if (!CreateBuffer(m_context, m_sphere_buffer, spheres)) {
+        Logger::Error("Renderer", "Failed to create sphere buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_plane_buffer, planes)) {
+        Logger::Error("Renderer", "Failed to create plane buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_vertex_buffer, vertices)) {
+        Logger::Error("Renderer", "Failed to create vertex buffer!");
+        return false;
+    }
+
+    if (!CreateBuffer(m_context, m_index_buffer, indices)) {
+        Logger::Error("Renderer", "Failed to create index buffer!");
+        return false;
+    }
+
+    Logger::Info("Renderer", "Geometry data created successfully!");
 
     return true;
 }
 
 bool Renderer::CreateMaterialBuffer(const Scene& scene) noexcept {
-    const auto& materials = scene.GetMaterials();
+    const std::vector<Material>& materials = scene.GetMaterials();
 
-    VulkanBufferCreateInfo material_buffer_info = {};
-    material_buffer_info.size = sizeof(Material) * materials.size();
-    material_buffer_info.usage = BufferUsage::StorageBuffer;
-    material_buffer_info.host_visible = true;
+    if (materials.empty()) {
+        Logger::Warning("Renderer", "No materials to create buffer for!");
+        return true;
+    }
 
-    if (!m_material_buffer.Create(m_context, material_buffer_info)) {
+    if (!CreateBuffer(m_context, m_material_buffer, materials)) {
         Logger::Error("Renderer", "Failed to create material buffer");
         return false;
     }
-
-    m_material_buffer.Upload(materials.data(), materials.size() * sizeof(Material));
 
     return true;
 }
 
 void Renderer::Render(const Camera& camera) noexcept {
-    uint32_t group_x = (m_config.width + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
-    uint32_t group_y = (m_config.height + COMPUTE_GROUP_SIZE - 1) / COMPUTE_GROUP_SIZE;
+    uint32_t group_x = (m_config.width + COMPUTE_WORKGROUP_SIZE - 1) / COMPUTE_WORKGROUP_SIZE;
+    uint32_t group_y = (m_config.height + COMPUTE_WORKGROUP_SIZE - 1) / COMPUTE_WORKGROUP_SIZE;
 
     // Record and submit compute commands
     VkCommandBuffer cmd = m_context.BeginSingleTimeCommands();
@@ -139,11 +188,14 @@ bool Renderer::ReadImage(std::vector<uint32_t>& pixels) noexcept {
 
 bool Renderer::CreateComputePipeline() noexcept {
     ComputePipelineCreateInfo pipeline_info = {};
-    pipeline_info.shader_path = "build/shaders/raytracer.comp.spv";
+    pipeline_info.shader_path = COMPUTE_SHADER_PATH;
     pipeline_info.bindings = {
-        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
-        //{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_OUTPUT,    .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_MATERIALS, .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_SPHERES,   .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_PLANES,    .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_VERTICES,  .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+        {.binding = BINDING_INDICES,   .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     };
     pipeline_info.push_constant_size = sizeof(PushConstants);
 
@@ -151,10 +203,16 @@ bool Renderer::CreateComputePipeline() noexcept {
 }
 
 bool Renderer::UpdateDescriptorSets() noexcept {
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 0, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
+    // Frame buffers
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_OUTPUT, m_output_buffer.GetBuffer(), m_output_buffer.GetSize());
 
-    // m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 2, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
-    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, 1, m_triangle_buffer.GetBuffer(), m_triangle_buffer.GetSize());
+    // Scene data
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_MATERIALS, m_material_buffer.GetBuffer(), m_material_buffer.GetSize());
+
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_SPHERES, m_sphere_buffer.GetBuffer(), m_sphere_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_PLANES, m_plane_buffer.GetBuffer(), m_plane_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_VERTICES, m_vertex_buffer.GetBuffer(), m_vertex_buffer.GetSize());
+    m_compute_pipeline.UpdateDescriptorSet(m_descriptor_set, BINDING_INDICES, m_index_buffer.GetBuffer(), m_index_buffer.GetSize());
 
     return true;
 }

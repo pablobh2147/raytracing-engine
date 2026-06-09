@@ -21,6 +21,7 @@ add_subdirectory(lib/vma)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/glm)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/stb)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 
 # Source files
 file(GLOB_RECURSE SOURCES src/*.cpp)

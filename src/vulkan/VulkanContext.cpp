@@ -426,14 +426,35 @@ VkCommandBuffer VulkanContext::BeginSingleTimeCommands() const {
 void VulkanContext::EndSingleTimeCommands(VkCommandBuffer command_buffer) const {
     vkEndCommandBuffer(command_buffer);
 
+    VkFenceCreateInfo fence_info {};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    VkFence fence;
+    if (vkCreateFence(device, &fence_info, nullptr, &fence) != VK_SUCCESS) {
+        Logger::Error("VulkanContext", "Failed to create fence for command submission");
+        vkFreeCommandBuffers(device, command_pool, 1, &command_buffer);
+        return;
+    }
+
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
 
-    vkQueueSubmit(compute_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(compute_queue);
+    VkResult submit_result = vkQueueSubmit(compute_queue, 1, &submit_info, fence);
+    if (submit_result != VK_SUCCESS) {
+        Logger::Error("VulkanContext", "Queue submit failed with error: {}", static_cast<int>(submit_result));
+        vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, command_pool, 1, &command_buffer);
+        return;
+    }
 
+    VkResult wait_result = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+    if (wait_result != VK_SUCCESS) {
+        Logger::Error("VulkanContext", "Fence wait failed with error: {}", static_cast<int>(wait_result));
+    }
+
+    vkDestroyFence(device, fence, nullptr);
     vkFreeCommandBuffers(device, command_pool, 1, &command_buffer);
 }
 
